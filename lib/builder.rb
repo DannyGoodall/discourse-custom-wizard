@@ -25,6 +25,19 @@ class CustomWizard::Builder
     @sorted_handlers.sort_by! { |h| -h[:priority] }
   end
 
+  def self.sorted_dynamic_content
+    @sorted_dynamic_content ||= []
+  end
+
+  def self.dynamic_content
+    sorted_dynamic_content.map { |h| { wizard_id: h[:wizard_id], block: h[:block] } }
+  end
+
+  def self.add_dynamic_content(priority = 0, wizard_id, &block)
+    sorted_dynamic_content << { priority: priority, wizard_id: wizard_id, block: block }
+    @sorted_dynamic_content.sort_by! { |h| -h[:priority] }
+  end
+
   def self.sorted_field_validators
     @sorted_field_validators ||= []
   end
