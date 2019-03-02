@@ -34,7 +34,12 @@ class CustomWizard::Builder
   end
 
   def self.add_dynamic_content(priority = 0, wizard_id, &block)
-    sorted_dynamic_content << { priority: priority, wizard_id: wizard_id, block: block }
+    # If wizard_id is Enumerable then add each embedded id
+    # and associated it with the code block
+    wizard_id = [wizard_id] unless wizard_id.class.include? Enumerable
+    wizard_id.each do |id|
+      sorted_dynamic_content << { priority: priority, wizard_id: id, block: block }
+    end
     @sorted_dynamic_content.sort_by! { |h| -h[:priority] }
   end
 
@@ -71,6 +76,11 @@ class CustomWizard::Builder
       reset_submissions if build_opts[:reset]
 
       @steps.each do |step_template|
+        CustomWizard::Builder.dynamic_content.each do |content_provider|
+          if content_provider[:wizard_id] == @wizard.id
+            content_provider[:block].call(step_template, @steps, @wizard)
+          end
+        end
         @wizard.append_step(step_template['id']) do |step|
           step.title = step_template['title'] if step_template['title']
           step.description = step_template['description'] if step_template['description']

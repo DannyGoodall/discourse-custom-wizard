@@ -5,8 +5,7 @@ require_dependency 'wizard/builder'
 
 class CustomWizard::Wizard
 
-  attr_reader :user
-  attr_accessor :steps
+  attr_reader :user, :steps
   attr_accessor :id,
                 :name,
                 :background,
@@ -154,21 +153,6 @@ class CustomWizard::Wizard
 
   def self.steps(wizard_id)
     wizard = PluginStore.get('custom_wizard', wizard_id)
-    # Call any dynamic content providers that have been registed for this wizard
-    unless wizard.nil?
-      Rails.logger.warn("*()*()*()*()*()*()*()*()*()*()*()*()*()*()*()*()*")
-      CustomWizard::Builder.dynamic_content.each do |content_provider|
-        Rails.logger.warn("Inside content_provider block")
-        Rails.logger.warn("wizard: #{wizard}")
-        Rails.logger.warn("content_provider: #{content_provider}")
-        if content_provider[:wizard_id] == wizard['id']
-          Rails.logger.warn("About to call content_provider block")
-          content_provider[:block].call(self)
-          Rails.logger.warn("Finsihed call of content_provider block")
-        end
-      end
-      Rails.logger.warn("*()*()*()*()*()*()*()*()*()*()*()*()*()*()*()*()*")
-    end
     wizard ? wizard['steps'] : nil
   end
 
