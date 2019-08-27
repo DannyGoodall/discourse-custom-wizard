@@ -4,10 +4,12 @@ import { findCustomWizard } from '../models/custom';
 import { ajax } from 'wizard/lib/ajax';
 
 export default Ember.Route.extend({
+  beforeModel(transition) {
+    this.set('queryParams', transition.intent.queryParams);
+  },
+
   model(params) {
-    let opts = {};
-    if (params.reset == 'true') opts['reset'] = true;
-    return findCustomWizard(params.wizard_id, opts);
+    return findCustomWizard(params.wizard_id, this.get('queryParams'));
   },
 
   afterModel() {
@@ -30,7 +32,8 @@ export default Ember.Route.extend({
 
     controller.setProperties({
       customWizard: true,
-      logoUrl: Wizard.SiteSettings.logo_small
+      logoUrl: Wizard.SiteSettings.logo_small,
+      reset: null
     });
   }
 });

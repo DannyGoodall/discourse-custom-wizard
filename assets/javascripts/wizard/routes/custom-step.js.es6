@@ -15,9 +15,22 @@ export default Ember.Route.extend({
     return model.set("wizardId", this.modelFor('custom').id);
   },
 
-  setupController(controller, step) {
-    controller.setProperties({
-      step, wizard: this.modelFor('custom')
-    });
+  setupController(controller, model) {
+    let props = {
+      step: model,
+      wizard: this.modelFor('custom')
+    };
+
+    if (!model.permitted) {
+      props['stepMessage'] = {
+        state: 'not-permitted',
+        text: model.permitted_message || I18n.t('wizard.step_not_permitted')
+      };
+      if (model.index > 0) {
+        props['showReset'] = true;
+      }
+    }
+
+    controller.setProperties(props);
   }
 });

@@ -1,8 +1,3 @@
-.wizards-nav-button {
-  @extend .nav-pills;
-  float: left;
-}
-
 .wizard-list {
   float: left;
   width: 250px;
@@ -83,8 +78,21 @@
 
       .setting-value {
         width: initial;
-        overflow: hidden;
         float: none;
+        display: flex;
+        
+        &.editor {
+          flex-flow: wrap;
+          
+          .d-editor {
+            margin-bottom: 5px;
+          }
+        }
+
+        .custom-input .remove {
+          margin-left: 10px;
+          margin-top: 0;
+        }
       }
     }
 
@@ -116,6 +124,23 @@
   .custom-category {
     margin-top: 5px;
     padding: 5px;
+  }
+
+  .api-body {
+    width: 100%;
+
+    .setting-label {
+      max-width: 70px;
+    }
+
+    .setting-value {
+      width: calc(100% - 180px);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 150px;
+    }
   }
 }
 
@@ -169,11 +194,16 @@
 
 .custom-input {
   display: flex;
-  margin: 5px 0;
+  align-items: center;
+  margin-bottom: 10px;
 
   .d-icon {
     margin: 0 auto;
     text-align: center;
+  }
+
+  input {
+    margin: 0;
   }
 
   input[disabled] {
@@ -189,6 +219,22 @@
     margin: 0 auto;
     align-self: flex-start;
   }
+
+  .connector {
+    margin: 0 10px;
+  }
+}
+
+.required-data .setting-value {
+  flex-flow: wrap;
+
+  .custom-inputs {
+    margin-bottom: 20px;
+  }
+
+  .required-data-message .label {
+    margin-bottom: 5px;
+  }
 }
 
 .setting .add-custom-input {
@@ -196,12 +242,12 @@
 }
 
 .admin-contents .wizard-submissions {
-  padding: 0 20px;
+  width: 100%;
   display: inline-block;
-  overflow: scroll;
-
+  
   table {
     margin-top: 0;
+    position: absolute;
   }
 }
 
@@ -298,6 +344,184 @@
   }
 }
 
-.wizard-step-contents{
-    height: unset !important;    
+.wizard-step-contents {
+  height: unset !important;
 }
+
+.admin-wizards-api {
+  margin-bottom: 40px;
+
+  .content-list {
+    margin-right: 20px;
+  }
+
+  .new-api {
+    margin-top: 20px;
+  }
+
+  .metadata .title input {
+    width: 400px;
+  }
+
+  .buttons {
+    text-align: right;
+    vertical-align: middle;
+
+    > .d-icon, > .spinner {
+      margin-right: 7px;
+    }
+
+    .error {
+      margin-top: 10px;
+      color: $danger;
+    }
+  }
+}
+
+.wizard-api-header {
+  &.page {
+    margin-bottom: 20px;
+  }
+
+  .buttons {
+    float: right;
+  }
+
+  .wizard-header {
+    overflow: hidden;
+  }
+}
+
+.wizard-api-authentication {
+  display: flex;
+  background-color: $primary-very-low;
+  padding: 20px;
+  margin-bottom: 20px;
+
+  .settings {
+    width: 50%;
+    max-width: 50%;
+  }
+
+  .redirect-uri .controls {
+    word-break: break-all;
+  }
+
+  .auth-type .select-kit {
+    min-width: 210px;
+    width: 210px;
+    margin-bottom: 10px;
+  }
+
+  .status {
+    border-left: 1px solid $primary;
+    margin-left: 20px;
+    padding-left: 20px;
+    width: 50%;
+    max-width: 50%;
+
+    .wizard-header {
+      overflow: hidden;
+    }
+
+    .authorization {
+      float: right;
+    }
+
+    .control-group {
+      margin-bottom: 15px;
+    }
+  }
+}
+
+.wizard-api-endpoints {
+  background-color: $primary-very-low;
+  padding: 20px;
+  margin-bottom: 20px;
+
+  .endpoint-list {
+    margin-top: 20px;
+
+    ul {
+      margin: 0;
+      list-style: none;
+    }
+  }
+
+  .endpoint {
+    margin-top: 20px;
+    
+    .top, .bottom {
+      display: flex;
+    }
+    
+    .top {
+      margin-bottom: 15px;
+    }
+    
+    .combo-box {
+      margin-right: 10px;
+      width: 210px;
+    }
+
+    input {
+      margin: 0;
+      margin-right: 10px;
+    }
+
+    .endpoint-url {
+      flex: 1 1 auto;
+    }
+
+    .remove-endpoint {
+      margin-left: auto;
+    }
+  }
+}
+
+.wizard-api-log {
+  background-color: #f8f8f8;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.wizard-step-contents{
+  height: unset !important;
+}
+
+// Tansfer tab
+
+.admin-wizards-transfer .admin-container .container {
+  padding-top: 20px;
+}
+
+#file-url {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.wizard-list-select {
+  list-style-type: none;
+}
+
+.wizard-action-buttons {
+  flex-direction: column;
+}
+
+.import-message {
+  margin: 10px 0;
+}
+
+.import-logs {
+  margin-top: 20px;
+  
+  .title {
+    font-weight: 800;
+    margin-bottom: 10px;
+  }
+  
+  ul {
+    list-style: none;
+  }
+}
+

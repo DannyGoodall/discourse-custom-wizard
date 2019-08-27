@@ -12,6 +12,7 @@ config = Rails.application.config
 config.assets.paths << Rails.root.join('plugins', 'discourse-custom-wizard', 'assets', 'javascripts')
 config.assets.paths << Rails.root.join('plugins', 'discourse-custom-wizard', 'assets', 'stylesheets', 'wizard')
 
+
 if Rails.env.production?
   config.assets.precompile += %w{
     wizard-custom-lib.js
@@ -54,6 +55,7 @@ after_initialize do
   require_dependency 'admin_constraint'
   Discourse::Application.routes.append do
     mount ::CustomWizard::Engine, at: 'w'
+    post 'wizard/authorization/callback' => "custom_wizard/authorization#callback"
 
     scope module: 'custom_wizard', constraints: AdminConstraint.new do
       get 'admin/wizards' => 'admin#index'
@@ -66,6 +68,18 @@ after_initialize do
       delete 'admin/wizards/custom/remove' => 'admin#remove'
       get 'admin/wizards/submissions' => 'admin#index'
       get 'admin/wizards/submissions/:wizard_id' => 'admin#submissions'
+      get 'admin/wizards/apis' => 'api#list'
+      get 'admin/wizards/apis/new' => 'api#index'
+      get 'admin/wizards/apis/:name' => 'api#find'
+      put 'admin/wizards/apis/:name' => 'api#save'
+      delete 'admin/wizards/apis/:name' => 'api#remove'
+      delete 'admin/wizards/apis/logs/:name' => 'api#clearlogs'
+      get 'admin/wizards/apis/:name/redirect' => 'api#redirect'
+      get 'admin/wizards/apis/:name/authorize' => 'api#authorize'
+      #transfer code
+      get 'admin/wizards/transfer' => 'transfer#index'
+      get 'admin/wizards/transfer/export' => 'transfer#export'
+      post 'admin/wizards/transfer/import' => 'transfer#import'
     end
   end
 
@@ -80,6 +94,21 @@ after_initialize do
   load File.expand_path('../controllers/wizard.rb', __FILE__)
   load File.expand_path('../controllers/steps.rb', __FILE__)
   load File.expand_path('../controllers/admin.rb', __FILE__)
+  #transfer code
+  load File.expand_path('../controllers/transfer.rb', __FILE__)
+
+  load File.expand_path('../jobs/refresh_api_access_token.rb', __FILE__)
+  load File.expand_path('../lib/api/api.rb', __FILE__)
+  load File.expand_path('../lib/api/authorization.rb', __FILE__)
+  load File.expand_path('../lib/api/endpoint.rb', __FILE__)
+  load File.expand_path('../lib/api/log_entry.rb', __FILE__)
+  load File.expand_path('../controllers/api.rb', __FILE__)
+  load File.expand_path('../serializers/api/api_serializer.rb', __FILE__)
+  load File.expand_path('../serializers/api/authorization_serializer.rb', __FILE__)
+  load File.expand_path('../serializers/api/basic_api_serializer.rb', __FILE__)
+  load File.expand_path('../serializers/api/endpoint_serializer.rb', __FILE__)
+  load File.expand_path('../serializers/api/basic_endpoint_serializer.rb', __FILE__)
+  load File.expand_path('../serializers/api/log_serializer.rb', __FILE__)
 
   ::UsersController.class_eval do
     def wizard_path
@@ -123,7 +152,7 @@ after_initialize do
       @excluded_routes ||= SiteSetting.wizard_redirect_exclude_paths.split('|') + ['/w/']
       url = request.referer || request.original_url
 
-      if request.format === 'text/html' && !@excluded_routes.any? { |str| /#{str}/ =~ url } && wizard_id
+      if request.format === 'text/html' && !@excluded_routes.any? {|str| /#{str}/ =~ url} && wizard_id
         if request.referer !~ /\/w\// && request.referer !~ /\/invites\//
           CustomWizard::Wizard.set_submission_redirect(current_user, wizard_id, request.referer)
         end
@@ -135,7 +164,7 @@ after_initialize do
     end
   end
 
-  add_to_serializer(:current_user, :redirect_to_wizard) { object.custom_fields['redirect_to_wizard'] }
+  add_to_serializer(:current_user, :redirect_to_wizard) {object.custom_fields['redirect_to_wizard']}
 
   ## TODO limit this to the first admin
   SiteSerializer.class_eval do
@@ -147,7 +176,7 @@ after_initialize do
 
     def complete_custom_wizard
       if scope.user && requires_completion = CustomWizard::Wizard.prompt_completion(scope.user)
-        requires_completion.map { |w| { name: w[:name], url: "/w/#{w[:id]}" } }
+        requires_completion.map {|w| {name: w[:name], url: "/w/#{w[:id]}"}}
       end
     end
 
@@ -160,6 +189,22 @@ after_initialize do
     if wizard_id = CustomWizard::Wizard.after_signup
       CustomWizard::Wizard.set_wizard_redirect(user, wizard_id)
     end
+  end
+  
+  ## TODO: We shouldn't be overriding the entire method here. Make this more lightweight.
+  add_to_class(:extra_locales_controller, :show) do
+    bundle = params[:bundle]
+    
+    unless URI(request.referer).path.include? '/w/'
+      raise Discourse::InvalidAccess.new if bundle !~ /^(admin|wizard)$/ || !current_user&.staff?
+    end
+
+    if params[:v]&.size == 32
+      hash = ExtraLocalesController.bundle_js_hash(bundle)
+      immutable_for(24.hours) if hash == params[:v]
+    end
+
+    render plain: ExtraLocalesController.bundle_js(bundle), content_type: "application/javascript"
   end
 
   DiscourseEvent.trigger(:custom_wizard_ready)

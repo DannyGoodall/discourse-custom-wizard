@@ -59,6 +59,7 @@ en:
           name_required: "Wizards must have a name."
           steps_required: "Wizards must have at least one step."
           id_required: "All wizards, steps, fields and actions need an id."
+          invalid_api_body: "Request body JSON needs to be a valid JSON."
           type_required: "All fields need a type."
           after_time_need_time: "After time is enabled but no time is set."
           after_time_invalid: "After time is invalid."
@@ -71,6 +72,17 @@ en:
           banner: "Banner"
           banner_placeholder: "Image url"
           description: "Description"
+          required_data:
+            label: "Required Data"
+            key: 'Submission key'
+            connector:
+              equals: "Equals"
+            not_permitted_message: "Message shown when required data not present"
+          permitted_params:
+            label: "Permitted Params"
+            key: 'Param'
+            value: 'Submission key'
+            connector: "Save as"
         field:
           type: "Choose a type"
           header: "Fields"
@@ -79,7 +91,7 @@ en:
           image: "Image"
           image_placeholder: "Image url"
           dropdown_none: "None"
-          dropdown_none_placeholder: "Translation Key"
+          dropdown_none_placeholder: "Label"
           choices_label: "Dropdown Choices"
           choices_type: "Choose a type"
           choices_translation: "Translation"
@@ -87,6 +99,8 @@ en:
           choices_preset:
             label: "Preset"
             categories: "Categories"
+            groups: "Groups"
+            tags: "Tags"
             filter: "Preset Filter"
           choice:
             value: "Value"
@@ -95,6 +109,11 @@ en:
           required_label: "Field is Required"
           min_length: "Min Length"
           min_length_placeholder: "Minimum length in characters"
+          file_types: "File Types"
+          tag: "Tag"
+          category: "Category"
+          limit: "Limit"
+          property: "Property"
         action:
           header: "Actions<sup>*</sup>"
           include: "Include Fields"
@@ -103,6 +122,8 @@ en:
           add_fields: "{{type}} Fields"
           available_fields: "* If 'Save wizard submissions' is disabled, only the fields of the current step are available to the current step's actions."
           topic_attr: "Topic Attribute"
+          interpolate_fields: "Insert wizard fields using the field_id in w{}. Insert user fields using field key in u{}."
+
           skip_redirect:
             label: "Skip Redirect"
             description: "Don't redirect the user to this {{type}} after the wizard completes"
@@ -112,6 +133,7 @@ en:
           create_topic:
             label: "Create Topic"
             category: "Category"
+            tags: "Tags"
           update_profile:
             label: "Update Profile"
             profile_field: "Profile Field"
@@ -121,11 +143,93 @@ en:
             user_fields: "User Fields: "
             wizard_fields: "Wizard Fields: "
             placeholder: "Insert wizard fields using the field_id in w{}. Insert user fields using field key in u{}."
+          add_to_group:
+            label: "Add to Group"
+            group: "Group"
+            group_selection: "Group Selection"
+            custom_group: "Custom Group"
+          route_to:
+            label: "Route To"
+            url: "Url"
+            code: "Code"
           custom_title: "Custom Title"
           custom_category:
             label: "Custom Category"
             wizard_field: "Wizard Field"
             user_field: "User Field"
+          send_to_api:
+            label: "Send to API"
+            api: "API"
+            endpoint: "Endpoint"
+            select_an_api: "Select an API"
+            select_an_endpoint: "Select an endpoint"
+            body: "Request body JSON"
+
+        api:
+          label: "API"
+          nav_label: 'APIs'
+          new: 'New Api'
+          name: "Name (can't be changed)"
+          name_placeholder: 'Underscored'
+          title: 'Title'
+          title_placeholder: 'Display name'
+          remove: 'Delete'
+          save: "Save"
+
+          auth:
+            label: "Authorization"
+            btn: 'Authorize'
+            settings: "Settings"
+            status: "Status"
+            redirect_uri: "Redirect url"
+            type: 'Type'
+            type_none: 'Select a type'
+            url: "Authorization url"
+            token_url: "Token url"
+            client_id: 'Client id'
+            client_secret: 'Client secret'
+            username: 'username'
+            password: 'password'
+            params:
+              label: 'Params'
+              new: 'New param'
+              key: 'key'
+              value: 'value'
+
+          status:
+            label: "Status"
+            authorized: 'Authorized'
+            not_authorized: "Not authorized"
+            code: "Code"
+            access_token: "Access token"
+            refresh_token: "Refresh token"
+            expires_at: "Expires at"
+            refresh_at: "Refresh at"
+
+          endpoint:
+            label: "Endpoints"
+            add: "Add endpoint"
+            name: "Endpoint name"
+            method: "Select a method"
+            url: "Enter a url"
+            content_type: "Select a content type"
+            success_codes: "Select success codes"
+
+          log:
+            label: "Logs"
+
+        transfer:
+          nav_label: "Transfer"
+          export:
+            label: "Export"
+            none_selected: "Please select atleast one wizard"
+          import:
+            label: "Import"
+            logs: "Import logs for {{fileName}}"
+            success: 'Wizard "{{id}}" saved successfully'
+            failure: 'Wizard "{{id}}" could not be saved'
+            no_file: "Please choose a file to import"
+            file_size_error: "The file must be JSON and 512kb or less"
 
   wizard_js:
     location:
@@ -174,13 +278,26 @@ en:
         geo_location: "Search and select a result."
 
     select_kit:
-      filter_placeholder: "Search..."
+      default_header_text: Select...
+      no_content: No matches found
+      filter_placeholder: Search...
+      filter_placeholder_with_any: Search or create...
+      create: "Create: '{{content}}'"
+      max_content_reached:
+        one: "You can only select {{count}} item."
+        other: "You can only select {{count}} items."
+      min_content_not_reached:
+        one: "Select at least {{count}} item."
+        other: "Select at least {{count}} items."
 
     wizard:
-      completed: "You have completed this wizard."
-      not_permitted: "You need to be trust level {{level}} or higher to access this wizard."
+      completed: "You have completed the {{name}} wizard."
+      not_permitted: "You need to be trust level {{level}} or higher to access the {{name}} wizard."
       none: "There is no wizard here."
       return_to_site: "Return to {{siteName}}"
+      requires_login: "You need to be logged in to access the {{name}} wizard."
+      reset: "Reset this wizard."
+      step_not_permitted: "You're not allowed to view this step."
 
     wizard_composer:
       show_preview: "Preview Post"

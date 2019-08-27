@@ -112,3 +112,36 @@
     {{input name="dropdown_none" value=field.dropdown_none placeholder=(i18n 'admin.wizard.field.dropdown_none_placeholder')}}
   </div>
 {{/if}}
+
+{{#if isUpload}}
+  <div class="setting">
+    <div class="setting-label">
+      <h3>{{i18n 'admin.wizard.field.file_types'}}</h3>
+    </div>
+    <div class="setting-value">
+      {{input value=field.file_types}}
+    </div>
+  </div>
+{{/if}}
+
+{{#if isCategoryOrTag}}
+  <div class="setting">
+    <div class="setting-label">
+      <h3>{{i18n 'admin.wizard.field.limit'}}</h3>
+    </div>
+    <div class="setting-value">
+      {{input type="number" value=field.limit}}
+    </div>
+  </div>
+{{/if}}
+
+{{#if isCategory}}
+  <div class="setting">
+    <div class="setting-label">
+      <h3>{{i18n 'admin.wizard.field.property'}}</h3>
+    </div>
+    <div class="setting-value">
+      {{combo-box content=categoryPropertyTypes value=field.property}}
+    </div>
+  </div>
+{{/if}}

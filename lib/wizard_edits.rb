@@ -23,7 +23,7 @@ require_dependency 'wizard/step'
 end
 
 ::Wizard::Field.class_eval do
-  attr_reader :label, :description, :image, :key, :min_length
+  attr_reader :label, :description, :image, :key, :min_length, :file_types, :limit, :property
   attr_accessor :dropdown_none
 
   def initialize(attrs)
@@ -38,6 +38,9 @@ end
     @value = attrs[:value]
     @choices = []
     @dropdown_none = attrs[:dropdown_none]
+    @file_types = attrs[:file_types]
+    @limit = attrs[:limit]
+    @property = attrs[:property]
   end
 
   def label
@@ -60,11 +63,20 @@ end
 end
 
 class ::Wizard::Step
-  attr_accessor :title, :description, :key
+  attr_accessor :title, :description, :key, :permitted, :permitted_message
 end
 
 ::WizardSerializer.class_eval do
-  attributes :id, :background, :completed, :required, :min_trust, :permitted
+  attributes :id,
+             :name,
+             :background,
+             :completed,
+             :required,
+             :min_trust,
+             :permitted,
+             :user,
+             :categories,
+             :uncategorized_category_id
 
   def id
     object.id
@@ -72,6 +84,10 @@ end
 
   def include_id?
     object.respond_to?(:id)
+  end
+
+  def name
+    object.name
   end
 
   def background
@@ -123,22 +139,49 @@ end
   def include_required?
     object.respond_to?(:required)
   end
+
+  def user
+    object.user
+  end
+  
+  def categories
+    begin
+      site = ::Site.new(scope)
+      ::ActiveModel::ArraySerializer.new(site.categories, each_serializer: BasicCategorySerializer)
+    rescue => e
+      puts "HERE IS THE ERROR: #{e.inspect}"
+    end
+  end
+  
+  def uncategorized_category_id
+    SiteSetting.uncategorized_category_id
+  end
 end
 
 ::WizardStepSerializer.class_eval do
+  attributes :permitted, :permitted_message
+
   def title
-    return object.title if object.title
-    I18n.t("#{object.key || i18n_key}.title", default: '')
+    return PrettyText.cook(object.title) if object.title
+    PrettyText.cook(I18n.t("#{object.key || i18n_key}.title", default: ''))
   end
 
   def description
     return object.description if object.description
     PrettyText.cook(I18n.t("#{object.key || i18n_key}.description", default: '', base_url: Discourse.base_url))
   end
+
+  def permitted
+    object.permitted
+  end
+  
+  def permitted_message
+    object.permitted_message
+  end
 end
 
 ::WizardFieldSerializer.class_eval do
-  attributes :dropdown_none, :image
+  attributes :dropdown_none, :image, :file_types, :limit, :property
 
   def label
     return object.label if object.label.present?
@@ -164,5 +207,17 @@ end
 
   def dropdown_none
     object.dropdown_none
+  end
+
+  def file_types
+    object.file_types
+  end
+  
+  def limit
+    object.limit
+  end
+  
+  def property
+    object.property
   end
 end

@@ -1,7 +1,7 @@
 export default {
   name: 'custom-routes',
 
-  initialize() {
+  initialize(app) {
     if (window.location.pathname.indexOf('/w/') < 0) return;
 
     const Router = requirejs('wizard/router').default;
@@ -15,6 +15,7 @@ export default {
     const FieldModel = requirejs('wizard/models/wizard-field').default;
     const autocomplete = requirejs('discourse/lib/autocomplete').default;
     const cook = requirejs('discourse/plugins/discourse-custom-wizard/wizard/lib/text-lite').cook;
+    const Singleton = requirejs("discourse/mixins/singleton").default;
 
     // IE11 Polyfill - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/entries#Polyfill
     if (!Object.entries)
@@ -30,8 +31,23 @@ export default {
 
     $.fn.autocomplete = autocomplete;
 
+    const targets = ["controller", "component", "route", "model", "adapter"];
+
+    const siteSettings = Wizard.SiteSettings;
+    app.register("site-settings:main", siteSettings, { instantiate: false });
+    targets.forEach(t => app.inject(t, "siteSettings", "site-settings:main"));
+
+    const site = Discourse.Site;
+    app.register("site:main", site);
+    targets.forEach(t => app.inject(t, "site", "site:main"));
+
+    site.reopenClass(Singleton);
+    site.currentProp('can_create_tag', false);
+
     // this is for discourse/lib/utilities.avatarImg;
+    Discourse.__container__ = app.__container__;
     Discourse.getURLWithCDN = getUrl;
+    Discourse.getURL = getUrl;
 
     Router.reopen({
       rootURL: getUrl('/w/')
@@ -57,7 +73,7 @@ export default {
 
       animateInvalidFields() {
         Ember.run.scheduleOnce('afterRender', () => {
-          $('.invalid input[type=text], .invalid textarea, .invalid input[type=checkbox]').wiggle(2, 100);
+          $('.invalid input[type=text], .invalid textarea, .invalid input[type=checkbox], .invalid .select-kit').wiggle(2, 100);
         });
       },
 
@@ -70,6 +86,10 @@ export default {
         const required = this.get('wizard.required');
         return index === 0 && !required;
       }.property('step.index', 'wizard.required'),
+
+      cookedTitle: function() {
+        return cook(this.get('step.title'));
+      }.property('step.title'),
 
       cookedDescription: function() {
         return cook(this.get('step.description'));
@@ -184,7 +204,16 @@ export default {
       }.property('field.type', 'field.id')
     });
 
-    const StandardFieldValidation = ['text', 'textarea', 'dropdown', 'image', 'checkbox', 'user-selector', 'text-only', 'composer'];
+    const StandardFieldValidation = [
+      'text',
+      'textarea',
+      'dropdown',
+      'tag',
+      'image',
+      'user-selector',
+      'text-only',
+      'composer'
+    ];
 
     FieldModel.reopen({
       hasCustomCheck: false,
@@ -209,10 +238,13 @@ export default {
           const type = this.get('type');
           if (type === 'checkbox') {
             valid = val;
+          } else if (type === 'category') {
+            valid = val && val.toString().length > 0;
           } else if (StandardFieldValidation.indexOf(type) > -1) {
             valid = val && val.length > 0;
           }
         }
+
 
         this.setValid(valid);
 

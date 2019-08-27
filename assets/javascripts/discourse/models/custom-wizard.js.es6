@@ -17,6 +17,7 @@ const wizardProperties = [
 const CustomWizard = Discourse.Model.extend({
   save() {
     return new Ember.RSVP.Promise((resolve, reject) => {
+
       const id = this.get('id');
       if (!id || !id.underscore()) return reject({ error: 'id_required' });
 
@@ -76,6 +77,9 @@ const CustomWizard = Discourse.Model.extend({
       if (s.key) step['key'] = s.key;
       if (s.banner) step['banner'] = s.banner;
       if (s.raw_description) step['raw_description'] = s.raw_description;
+      if (s.required_data) step['required_data'] = s.required_data;
+      if (s.required_data_message) step['required_data_message'] = s.required_data_message;
+      if (s.permitted_params) step['permitted_params'] = s.permitted_params;
 
       const fields = s.get('fields');
       if (fields.length) {
@@ -126,6 +130,16 @@ const CustomWizard = Discourse.Model.extend({
           if (!id || !id.underscore()) {
             error = 'id_required';
             return;
+          }
+          //check if api_body is valid JSON
+          let api_body = a.get('api_body');
+          if (api_body) {
+            try {
+              JSON.parse(api_body);
+            } catch (e) {
+              error = 'invalid_api_body';
+              return;
+            }
           }
 
           a.set('id', id.underscore());
@@ -231,6 +245,9 @@ CustomWizard.reopenClass({
             title: s.title,
             raw_description: s.raw_description,
             banner: s.banner,
+            required_data: s.required_data,
+            required_data_message: s.required_data_message,
+            permitted_params: s.permitted_params,
             fields,
             actions,
             isNew: false

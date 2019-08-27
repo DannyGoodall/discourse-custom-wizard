@@ -5,7 +5,9 @@ export default StepController.extend({
   actions: {
     goNext(response) {
       const next = this.get('step.next');
-      if (response.refresh_required) {
+      if (response.route_to) {
+        window.location.href = response.route_to;
+      } else if (response.refresh_required) {
         const id = this.get('wizard.id');
         window.location.href = getUrl(`/w/${id}/steps/${next}`);
       } else {
@@ -19,6 +21,12 @@ export default StepController.extend({
 
     showMessage(message) {
       this.set('stepMessage', message);
+    },
+
+    resetWizard() {
+      const id = this.get('wizard.id');
+      const stepId = this.get('step.id');
+      window.location.href = getUrl(`/w/${id}/steps/${stepId}?reset=true`);
     }
   }
 });
