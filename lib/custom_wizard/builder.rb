@@ -4,7 +4,6 @@ class CustomWizard::Builder
   def initialize(wizard_id, user=nil)
     params = CustomWizard::Wizard.find(wizard_id)
     return nil if params.blank?
-    
     @wizard = CustomWizard::Wizard.new(params, user)
     @steps = params['steps'] || []
     @actions = params['actions'] || []
@@ -36,7 +35,20 @@ class CustomWizard::Builder
     sorted_field_validators << { priority: priority, type: type, block: block }
     @sorted_field_validators.sort_by! { |h| -h[:priority] }
   end
-  
+
+  def self.sorted_content_providers
+    @sorted_content_providers ||= []
+  end
+
+  def self.content_providers
+    sorted_content_providers.map { |h| { field_id: h[:field_id], wizard_id: h[:wizard_id], value: h[:value],  block: h[:block] } }
+  end
+
+  def self.add_content_provider(priority = 0, wizard_id: nil, field_id: nil, value: nil,  &block)
+    sorted_content_providers << { priority: priority, wizard_id: wizard_id, field_id: field_id, value: value,  block: block }
+    @sorted_content_providers.sort_by! { |h| -h[:priority] }
+  end
+
   def mapper
     CustomWizard::Mapper.new(
       user: @wizard.user,
@@ -169,7 +181,7 @@ class CustomWizard::Builder
               end
             end
           end
-                    
+
           if route_to = data['route_to']
             data.delete('route_to')
           end
@@ -282,7 +294,65 @@ class CustomWizard::Builder
         params[:content] = content[:result]
       end
     end
-        
+
+    CustomWizard::Builder.content_providers.each do |content_provider|
+      # The add_content_provider method above registers a block to run as well as the conditions
+      # that, if met, will decide if the block is run for a given field.
+      #
+      # Those conditions are specified in the wizard_id, field_id and value parameters. If any of those
+      # parameters are specified as nil (the default), then their value is ignored in deciding whether
+      # the dynamic content block is executed.
+      #
+      # If any of these values is specified at block registration time, then the field being created has
+      # to match all of them before the dynamic content block is executed.
+      #
+      # for example. If a block is registered like so
+      #
+      # add_content_provider(wizard_id: "get_important_details") do...
+      #
+      # then the block will be executed for every field in the named wizard. If the block is registered
+      # like so
+      #
+      # add_content_provider(wizard_id: "get_important_details", "step_1_field_1") do...
+      #
+      # then the block will only be executed for the step_1_field_1 field of the get_important_details wizard
+      #
+      # Finally, the 'value' field, which comes from the wizard "prefill" value (for dropdown boxes), can also
+      # be used as the arbiter of whether dynamic content is needed. For example, if the block is registered as
+      #
+      # add_content_provider(value: "dyn_populate_currencies") do...
+      #
+      # Then the block will be executed every time a field value of "dyn_populate_currencies" is found
+      #
+      # When the block is called below, it is passed a hash containing some useful context variables...
+      #
+      # {
+      #   wizard: wizard,
+      #   step: step,
+      #   params: params,
+      #   step_template: step_template,
+      #   field_template: field_template,
+      #   build_opts: build_opts
+      # }
+      #
+      # The block is expected to manipulate the params value and to return any dynamic content in the
+      # params[:content] and params[:value] elements (at least for dropdown menu choices.)
+      #
+      # check for an exact match for the identifier wizard/field/value
+      if (content_provider[:wizard_id].nil? or (content_provider[:wizard_id] === @wizard.id)) and
+          (content_provider[:field_id].nil? or (content_provider[:field_id] === params[:id])) and
+          (content_provider[:value].nil? or (content_provider[:value] === params[:value]))
+        content_provider_params = {
+            wizard: wizard,
+            step: step,
+            params: params,
+            step_template: step_template,
+            field_template: field_template,
+            build_opts: build_opts
+        }
+        params = content_provider[:block].call(content_provider_params)
+      end
+    end
     field = step.add_field(params)
   end
   

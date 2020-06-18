@@ -1,7 +1,14 @@
 class CustomWizard::StepUpdater
   include ActiveModel::Model
 
-  attr_accessor :refresh_required, :fields, :result, :step
+  # Added wizard to the list of accessors because now that the CWP UI no longer
+  # allows the direct editing of field.id and instead generates field_id values that are
+  # potentially identical in each wizard (step_1_field_1), the field_validator routine
+  # (which is sent a step_updated) can no longer uniquely identify the field it is
+  # working with. Only my looking across wizard.id and field.id can you identify the
+  # field specifically.
+  #
+  attr_accessor :refresh_required, :fields, :result, :step, :wizard
 
   def initialize(current_user, wizard, step, fields)
     @current_user = current_user
