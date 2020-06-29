@@ -1,6 +1,7 @@
-import { default as computed, observes } from 'ember-addons/ember-computed-decorators';
+import { default as computed, observes } from 'discourse-common/utils/decorators';
 import { renderAvatar } from 'discourse/helpers/user-avatar';
 import userSearch from '../lib/user-search';
+import I18n from "I18n";
 
 const template = function(params) {
   const options = params.options;
@@ -64,7 +65,7 @@ export default Ember.TextField.extend({
       return usernames;
     }
 
-    this.$().val(this.get('usernames')).autocomplete({
+    $(this.element).val(this.get('usernames')).autocomplete({
       template,
       disabled: this.get('disabled'),
       single: this.get('single'),
@@ -121,7 +122,7 @@ export default Ember.TextField.extend({
 
   willDestroyElement() {
     this._super();
-    this.$().autocomplete('destroy');
+    $(this.element).autocomplete('destroy');
   },
 
   // THIS IS A HUGE HACK TO SUPPORT CLEARING THE INPUT
@@ -129,7 +130,7 @@ export default Ember.TextField.extend({
   _clearInput: function() {
     if (arguments.length > 1) {
       if (Em.isEmpty(this.get("usernames"))) {
-        this.$().parent().find("a").click();
+        $(this.element).parent().find("a").click();
       }
     }
   }

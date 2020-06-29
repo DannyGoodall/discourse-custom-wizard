@@ -1,7 +1,8 @@
 /* eslint no-undef: 0 */
 
-import computed from "ember-addons/ember-computed-decorators";
+import computed from "discourse-common/utils/decorators";
 import { siteDir, isRTL, isLTR } from "discourse/lib/text-direction";
+import I18n from "I18n";
 
 export default Ember.TextField.extend({
   attributeBindings: ['autocorrect', 'autocapitalize', 'autofocus', 'maxLength', 'dir'],

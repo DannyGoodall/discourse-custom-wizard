@@ -1,14 +1,18 @@
 <html>
   <head>
     <%= discourse_stylesheet_link_tag :wizard, theme_id: nil %>
+    <%= stylesheet_link_tag "wizard_autocomplete" %>
     <%= stylesheet_link_tag "wizard_custom" %>
     <%= stylesheet_link_tag "wizard_composer" %>
     <%= stylesheet_link_tag "wizard_variables" %>
     <%= stylesheet_link_tag "wizard_custom_mobile" %>
-    <%- if theme_ids %>
+    <%= stylesheet_link_tag "wizard_locations"%>
+    <%= stylesheet_link_tag "wizard_events"%>
+    <%- if theme_ids.present? %>
       <%= discourse_stylesheet_link_tag (mobile_view? ? :mobile_theme : :desktop_theme) %>
     <%- end %>
-
+    
+    <%= preload_script "locales/#{I18n.locale}" %>
     <%= preload_script "ember_jquery" %>
     <%= preload_script "wizard-vendor" %>
     <%= preload_script "wizard-application" %>
@@ -16,8 +20,7 @@
     <%= preload_script "wizard-custom" %>
     <%= preload_script "wizard-plugin" %>
     <%= preload_script "pretty-text-bundle" %>
-    <%= preload_script "locales/#{I18n.locale}" %>
-    <script src="<%= Discourse.base_uri %>/extra-locales/wizard"></script>
+    <script src="<%= ExtraLocalesController.url("wizard") %>"></script>
     <%= csrf_meta_tags %>
 
     <%- unless customization_disabled? %>
@@ -40,8 +43,12 @@
       <%= raw theme_lookup("body_tag") %>
     <%- end %>
 
-    <%= preload_script 'wizard-custom-start' %>
-    <%= preload_script 'wizard-raw-templates' %>
+    <%- if current_user %>
+      <%= preload_script 'wizard-custom-start' %>
+      <%= preload_script 'wizard-raw-templates' %>
+    <%- else %>
+      <%= preload_script 'wizard-custom-guest' %>
+    <%- end %>
 
     <div id="svg-sprites" style="display:none;">
       <div class="fontawesome">

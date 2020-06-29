@@ -1,9 +1,13 @@
+import { default as computed } from 'discourse-common/utils/decorators';
+import { dasherize } from "@ember/string";
+
 export default {
   name: 'custom-routes',
 
   initialize(app) {
     if (window.location.pathname.indexOf('/w/') < 0) return;
-
+    
+    const EmberObject = requirejs('@ember/object').default;
     const Router = requirejs('wizard/router').default;
     const ApplicationRoute = requirejs('wizard/routes/application').default;
     const ajax = requirejs('wizard/lib/ajax').ajax;
@@ -16,6 +20,18 @@ export default {
     const autocomplete = requirejs('discourse/lib/autocomplete').default;
     const cook = requirejs('discourse/plugins/discourse-custom-wizard/wizard/lib/text-lite').cook;
     const Singleton = requirejs("discourse/mixins/singleton").default;
+    const Store = requirejs("discourse/models/store").default;
+    const registerRawHelpers = requirejs("discourse-common/lib/raw-handlebars-helpers").registerRawHelpers;
+    const RawHandlebars = requirejs("discourse-common/lib/raw-handlebars").default;
+    const Site = requirejs("discourse/plugins/discourse-custom-wizard/wizard/models/site").default;
+    const RestAdapter = requirejs("discourse/adapters/rest").default;
+    
+    Discourse.Model = EmberObject.extend();
+    Discourse.__container__ = app.__container__;
+    Discourse.getURLWithCDN = getUrl;
+    Discourse.getURL = getUrl;
+        
+    registerRawHelpers(RawHandlebars, Handlebars);
 
     // IE11 Polyfill - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/entries#Polyfill
     if (!Object.entries)
@@ -36,19 +52,19 @@ export default {
     const siteSettings = Wizard.SiteSettings;
     app.register("site-settings:main", siteSettings, { instantiate: false });
     targets.forEach(t => app.inject(t, "siteSettings", "site-settings:main"));
-
-    const site = Discourse.Site;
-    app.register("site:main", site);
+    
+    app.register("service:store", Store);
+    targets.forEach(t => app.inject(t, "store", "service:store"));
+    targets.forEach(t => app.inject(t, "appEvents", "service:app-events"));
+    
+    app.register("adapter:rest", RestAdapter);
+    
+    const site = Site.current();
+    app.register("site:main", site, { instantiate: false });
     targets.forEach(t => app.inject(t, "site", "site:main"));
-
-    site.reopenClass(Singleton);
-    site.currentProp('can_create_tag', false);
-
-    // this is for discourse/lib/utilities.avatarImg;
-    Discourse.__container__ = app.__container__;
-    Discourse.getURLWithCDN = getUrl;
-    Discourse.getURL = getUrl;
-
+        
+    site.set('can_create_tag', false);
+        
     Router.reopen({
       rootURL: getUrl('/w/')
     });
@@ -73,7 +89,15 @@ export default {
 
       animateInvalidFields() {
         Ember.run.scheduleOnce('afterRender', () => {
-          $('.invalid input[type=text], .invalid textarea, .invalid input[type=checkbox], .invalid .select-kit').wiggle(2, 100);
+          let $element = $('.invalid input[type=text], .invalid textarea, .invalid input[type=checkbox], .invalid .select-kit');
+          
+          if ($element.length) {
+            $([document.documentElement, document.body]).animate({
+              scrollTop: $element.offset().top - 200
+            }, 400, function() {
+              $element.wiggle(2, 100);
+            });
+          }
         });
       },
 
@@ -119,6 +143,9 @@ export default {
           .catch(() => this.animateInvalidFields())
           .finally(() => this.set('saving', false));
       },
+      
+      keyPress(key) {
+      },
 
       actions: {
         quit() {
@@ -142,7 +169,7 @@ export default {
         const fields = {};
 
         this.get('fields').forEach(f => {
-          if (f.type !== 'text-only') {
+          if (f.type !== 'text_only') {
             fields[f.id] = f.value;
           }
         });
@@ -166,6 +193,7 @@ export default {
             if (wizardErrors.length) {
               this.handleWizardError(wizardErrors.join('\n'));
             }
+            this.animateInvalidFields();
             throw response;
           }
 
@@ -199,53 +227,51 @@ export default {
       inputComponentName: function() {
         const type = this.get('field.type');
         const id = this.get('field.id');
-        if (type === 'text-only') return false;
-        return (type === 'component') ? Ember.String.dasherize(id) : `wizard-field-${type}`;
+        if (['text_only'].includes(type)) return false;
+        return dasherize((type === 'component') ? id : `wizard-field-${type}`);
       }.property('field.type', 'field.id')
     });
 
     const StandardFieldValidation = [
       'text',
+      'number',
       'textarea',
       'dropdown',
       'tag',
       'image',
-      'user-selector',
-      'text-only',
-      'composer'
+      'user_selector',
+      'text_only',
+      'composer',
+      'category',
+      'group'
     ];
 
     FieldModel.reopen({
-      hasCustomCheck: false,
-
-      customCheck() {
-        return true;
-      },
-
       check() {
-        let valid = this.get('valid');
+        if (this.customCheck) {
+          return this.customCheck();
+        }
+        
+        let valid = this.valid;
 
-        if (!this.get('required')) {
+        if (!this.required) {
           this.setValid(true);
           return true;
         }
 
-        const hasCustomCheck = this.get('hasCustomCheck');
-        if (hasCustomCheck) {
-          valid = this.customCheck();
-        } else {
-          const val = this.get('value');
-          const type = this.get('type');
-          if (type === 'checkbox') {
-            valid = val;
-          } else if (type === 'category') {
-            valid = val && val.toString().length > 0;
-          } else if (StandardFieldValidation.indexOf(type) > -1) {
-            valid = val && val.length > 0;
-          }
+        const val = this.get('value');
+        const type = this.get('type');
+                  
+        if (type === 'checkbox') {
+          valid = val;
+        } else if (type === 'upload') {
+          valid = val && val.id > 0;
+        } else if (StandardFieldValidation.indexOf(type) > -1) {
+          valid = val && val.toString().length > 0;
+        } else if (type === 'url') {
+          valid = true;
         }
-
-
+            
         this.setValid(valid);
 
         return valid;

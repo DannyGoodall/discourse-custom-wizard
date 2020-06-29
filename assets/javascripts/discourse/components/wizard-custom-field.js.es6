@@ -1,44 +1,97 @@
-import { default as computed, observes, on } from 'ember-addons/ember-computed-decorators';
+import { default as discourseComputed } from 'discourse-common/utils/decorators';
+import { equal, or, alias } from "@ember/object/computed";
+import { computed } from "@ember/object";
+import { selectKitContent } from '../lib/wizard';
+import UndoChanges from '../mixins/undo-changes';
+import Component from "@ember/component";
 
-export default Ember.Component.extend({
-  classNames: 'wizard-custom-field',
-  isDropdown: Ember.computed.equal('field.type', 'dropdown'),
-  isUpload: Ember.computed.equal('field.type', 'upload'),
-  isCategory: Ember.computed.equal('field.type', 'category'),
-  disableId: Ember.computed.not('field.isNew'),
-  choicesTypes: ['translation', 'preset', 'custom'],
-  choicesTranslation: Ember.computed.equal('field.choices_type', 'translation'),
-  choicesPreset: Ember.computed.equal('field.choices_type', 'preset'),
-  choicesCustom: Ember.computed.equal('field.choices_type', 'custom'),
-  categoryPropertyTypes: ['id', 'slug'],
-
-  @computed('field.type')
-  isInput: (type) => type === 'text' || type === 'textarea',
-
-  @computed('field.type')
-  isCategoryOrTag: (type) => type === 'tag' || type === 'category',
-
-  @computed()
-  presetChoices() {
-    return [
-      {
-        id: 'categories',
-        name: I18n.t('admin.wizard.field.choices_preset.categories')
-      },{
-        id: 'groups',
-        name: I18n.t('admin.wizard.field.choices_preset.groups')
-      },{
-        id: 'tags',
-        name: I18n.t('admin.wizard.field.choices_preset.tags')
-      }
-    ];
+export default Component.extend(UndoChanges, {
+  componentType: 'field',
+  classNameBindings: [':wizard-custom-field', 'visible'],
+  visible: computed('currentFieldId', function() { return this.field.id === this.currentFieldId }),
+  isDropdown: equal('field.type', 'dropdown'),
+  isUpload: equal('field.type', 'upload'),
+  isCategory: equal('field.type', 'category'),
+  isGroup: equal('field.type', 'group'),
+  isTag: equal('field.type', 'tag'),
+  isText: equal('field.type', 'text'),
+  isTextarea: equal('field.type', 'textarea'),
+  isUrl: equal('field.type', 'url'),
+  showPrefill: or('isCategory', 'isTag', 'isGroup', 'isDropdown'),
+  showContent: or('isCategory', 'isTag', 'isGroup', 'isDropdown'),
+  showLimit: or('isCategory', 'isTag'),
+  showMinLength: or('isText', 'isTextarea', 'isUrl', 'isComposer'),
+  categoryPropertyTypes: selectKitContent(['id', 'slug']),
+  showAdvanced: alias('field.type'),
+  messageUrl: 'https://thepavilion.io/t/2809',
+  
+  @discourseComputed('field.type')
+  messageKey(type) {
+    let key = 'type';
+    if (type) {
+      key = 'edit';
+    }
+    return key;
   },
+  
+  setupTypeOutput(fieldType, options) {    
+    const selectionType = {
+      category: 'category',
+      tag: 'tag',
+      group: 'group'
+    }[fieldType];
+    
+    if (selectionType) {
+      options[`${selectionType}Selection`] = 'output';
+      options.outputDefaultSelection = selectionType;
+    }
 
-  @on('didInsertElement')
-  @observes('isUpload')
-  setupFileType() {
-    if (this.get('isUpload') && !this.get('field.file_types')) {
-      this.set('field.file_types', '.jpg,.png');
+    return options;
+  },
+  
+  @discourseComputed('field.type')
+  contentOptions(fieldType) {
+    let options = {
+      wizardFieldSelection: true,
+      textSelection: 'key,value',
+      userFieldSelection: 'key,value',
+      context: 'field'
+    }
+    
+    options = this.setupTypeOutput(fieldType, options);
+    
+    if (this.isDropdown) {
+      options.wizardFieldSelection = 'key,value';
+      options.userFieldOptionsSelection = 'output';
+      options.textSelection = 'key,value,output';
+      options.inputTypes = 'conditional,association,assignment';
+      options.pairConnector = 'association';
+      options.keyPlaceholder = 'admin.wizard.key';
+      options.valuePlaceholder = 'admin.wizard.value';
+    }
+        
+    return options;
+  },
+  
+  @discourseComputed('field.type')
+  prefillOptions(fieldType) {
+    let options = {
+      wizardFieldSelection: true,
+      textSelection: true,
+      userFieldSelection: 'key,value',
+      context: 'field'
+    }
+
+    return this.setupTypeOutput(fieldType, options);
+  },
+  
+  actions: {    
+    imageUploadDone(upload) {
+      this.set("field.image", upload.url);
+    },
+    
+    imageUploadDeleted() {
+      this.set("field.image", null);
     }
   }
 });

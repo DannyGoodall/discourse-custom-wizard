@@ -1,211 +1,168 @@
 # name: discourse-custom-wizard
 # about: Create custom wizards
-# version: 0.1
+# version: 0.2
 # authors: Angus McLeod
 # url: https://github.com/angusmcleod/discourse-custom-wizard
 
-register_asset 'stylesheets/wizard_custom_admin.scss'
+register_asset 'stylesheets/common/wizard-admin.scss'
+register_asset 'stylesheets/common/wizard-mapper.scss'
 register_asset 'lib/jquery.timepicker.min.js'
 register_asset 'lib/jquery.timepicker.scss'
 
-config = Rails.application.config
-config.assets.paths << Rails.root.join('plugins', 'discourse-custom-wizard', 'assets', 'javascripts')
-config.assets.paths << Rails.root.join('plugins', 'discourse-custom-wizard', 'assets', 'stylesheets', 'wizard')
+enabled_site_setting :custom_wizard_enabled
 
+config = Rails.application.config
+plugin_asset_path = "#{Rails.root}/plugins/discourse-custom-wizard/assets"
+config.assets.paths << "#{plugin_asset_path}/javascripts"
+config.assets.paths << "#{plugin_asset_path}/stylesheets/wizard"
 
 if Rails.env.production?
   config.assets.precompile += %w{
+    wizard-preload.js
+    wizard-custom-guest.js
     wizard-custom-lib.js
     wizard-custom.js
     wizard-plugin.js
     wizard-custom-start.js
     wizard-raw-templates.js.erb
+    stylesheets/wizard/wizard_autocomplete.scss
     stylesheets/wizard/wizard_custom.scss
     stylesheets/wizard/wizard_composer.scss
     stylesheets/wizard/wizard_variables.scss
     stylesheets/wizard/wizard_custom_mobile.scss
+    stylesheets/wizard/wizard_locations.scss
+    stylesheets/wizard/wizard_events.scss
   }
 end
 
 if respond_to?(:register_svg_icon)
-  register_svg_icon "calendar-o"
+  register_svg_icon "far-calendar"
   register_svg_icon "chevron-right"
   register_svg_icon "chevron-left"
 end
 
 after_initialize do
-  UserHistory.actions[:custom_wizard_step] = 1000
-
-  require_dependency 'application_controller'
-  module ::CustomWizard
-    class Engine < ::Rails::Engine
-      engine_name 'custom_wizard'
-      isolate_namespace CustomWizard
-    end
+  %w[
+    ../lib/custom_wizard/engine.rb
+    ../config/routes.rb
+    ../controllers/custom_wizard/admin/admin.rb
+    ../controllers/custom_wizard/admin/wizard.rb
+    ../controllers/custom_wizard/admin/submissions.rb
+    ../controllers/custom_wizard/admin/api.rb
+    ../controllers/custom_wizard/admin/logs.rb
+    ../controllers/custom_wizard/wizard.rb
+    ../controllers/custom_wizard/steps.rb
+    ../controllers/custom_wizard/transfer.rb
+    ../jobs/clear_after_time_wizard.rb
+    ../jobs/refresh_api_access_token.rb
+    ../jobs/set_after_time_wizard.rb
+    ../lib/custom_wizard/action_result.rb
+    ../lib/custom_wizard/action.rb
+    ../lib/custom_wizard/builder.rb
+    ../lib/custom_wizard/field.rb
+    ../lib/custom_wizard/mapper.rb
+    ../lib/custom_wizard/log.rb
+    ../lib/custom_wizard/step_updater.rb
+    ../lib/custom_wizard/validator.rb
+    ../lib/custom_wizard/wizard.rb
+    ../lib/custom_wizard/api/api.rb
+    ../lib/custom_wizard/api/authorization.rb
+    ../lib/custom_wizard/api/endpoint.rb
+    ../lib/custom_wizard/api/log_entry.rb
+    ../serializers/custom_wizard/api/authorization_serializer.rb
+    ../serializers/custom_wizard/api/basic_endpoint_serializer.rb
+    ../serializers/custom_wizard/api/endpoint_serializer.rb
+    ../serializers/custom_wizard/api/log_serializer.rb
+    ../serializers/custom_wizard/api_serializer.rb
+    ../serializers/custom_wizard/basic_api_serializer.rb
+    ../serializers/custom_wizard/basic_wizard_serializer.rb
+    ../serializers/custom_wizard/wizard_field_serializer.rb
+    ../serializers/custom_wizard/wizard_step_serializer.rb
+    ../serializers/custom_wizard/wizard_serializer.rb
+    ../serializers/custom_wizard/log_serializer.rb
+    ../extensions/extra_locales_controller.rb
+    ../extensions/invites_controller.rb
+    ../extensions/wizard_field.rb
+    ../extensions/wizard_step.rb
+  ].each do |path|
+    load File.expand_path(path, __FILE__)
   end
+  
+  add_class_method(:wizard, :user_requires_completion?) do |user|
+    wizard_result = self.new(user).requires_completion?
+    return wizard_result if wizard_result
 
-  CustomWizard::Engine.routes.draw do
-    get ':wizard_id' => 'wizard#index'
-    put ':wizard_id/skip' => 'wizard#skip'
-    get ':wizard_id/steps' => 'wizard#index'
-    get ':wizard_id/steps/:step_id' => 'wizard#index'
-    put ':wizard_id/steps/:step_id' => 'steps#update'
-  end
+    custom_redirect = false
 
-  require_dependency 'admin_constraint'
-  Discourse::Application.routes.append do
-    mount ::CustomWizard::Engine, at: 'w'
-    post 'wizard/authorization/callback' => "custom_wizard/authorization#callback"
+    if user &&
+       user.first_seen_at.blank? &&
+       wizard = CustomWizard::Wizard.after_signup(user)
 
-    scope module: 'custom_wizard', constraints: AdminConstraint.new do
-      get 'admin/wizards' => 'admin#index'
-      get 'admin/wizards/field-types' => 'admin#field_types'
-      get 'admin/wizards/custom' => 'admin#index'
-      get 'admin/wizards/custom/new' => 'admin#index'
-      get 'admin/wizards/custom/all' => 'admin#custom_wizards'
-      get 'admin/wizards/custom/:wizard_id' => 'admin#find_wizard'
-      put 'admin/wizards/custom/save' => 'admin#save'
-      delete 'admin/wizards/custom/remove' => 'admin#remove'
-      get 'admin/wizards/submissions' => 'admin#index'
-      get 'admin/wizards/submissions/:wizard_id' => 'admin#submissions'
-      get 'admin/wizards/apis' => 'api#list'
-      get 'admin/wizards/apis/new' => 'api#index'
-      get 'admin/wizards/apis/:name' => 'api#find'
-      put 'admin/wizards/apis/:name' => 'api#save'
-      delete 'admin/wizards/apis/:name' => 'api#remove'
-      delete 'admin/wizards/apis/logs/:name' => 'api#clearlogs'
-      get 'admin/wizards/apis/:name/redirect' => 'api#redirect'
-      get 'admin/wizards/apis/:name/authorize' => 'api#authorize'
-      #transfer code
-      get 'admin/wizards/transfer' => 'transfer#index'
-      get 'admin/wizards/transfer/export' => 'transfer#export'
-      post 'admin/wizards/transfer/import' => 'transfer#import'
-    end
-  end
-
-  load File.expand_path('../jobs/clear_after_time_wizard.rb', __FILE__)
-  load File.expand_path('../jobs/set_after_time_wizard.rb', __FILE__)
-  load File.expand_path('../lib/builder.rb', __FILE__)
-  load File.expand_path('../lib/field.rb', __FILE__)
-  load File.expand_path('../lib/step_updater.rb', __FILE__)
-  load File.expand_path('../lib/template.rb', __FILE__)
-  load File.expand_path('../lib/wizard.rb', __FILE__)
-  load File.expand_path('../lib/wizard_edits.rb', __FILE__)
-  load File.expand_path('../controllers/wizard.rb', __FILE__)
-  load File.expand_path('../controllers/steps.rb', __FILE__)
-  load File.expand_path('../controllers/admin.rb', __FILE__)
-  #transfer code
-  load File.expand_path('../controllers/transfer.rb', __FILE__)
-
-  load File.expand_path('../jobs/refresh_api_access_token.rb', __FILE__)
-  load File.expand_path('../lib/api/api.rb', __FILE__)
-  load File.expand_path('../lib/api/authorization.rb', __FILE__)
-  load File.expand_path('../lib/api/endpoint.rb', __FILE__)
-  load File.expand_path('../lib/api/log_entry.rb', __FILE__)
-  load File.expand_path('../controllers/api.rb', __FILE__)
-  load File.expand_path('../serializers/api/api_serializer.rb', __FILE__)
-  load File.expand_path('../serializers/api/authorization_serializer.rb', __FILE__)
-  load File.expand_path('../serializers/api/basic_api_serializer.rb', __FILE__)
-  load File.expand_path('../serializers/api/endpoint_serializer.rb', __FILE__)
-  load File.expand_path('../serializers/api/basic_endpoint_serializer.rb', __FILE__)
-  load File.expand_path('../serializers/api/log_serializer.rb', __FILE__)
-
-  ::UsersController.class_eval do
-    def wizard_path
-      if custom_wizard_redirect = current_user.custom_fields['redirect_to_wizard']
-        "#{Discourse.base_url}/w/#{custom_wizard_redirect.dasherize}"
-      else
-        "#{Discourse.base_url}/wizard"
-      end
-    end
-  end
-
-  module InvitesControllerCustomWizard
-    def path(url)
-      if Wizard.user_requires_completion?(@user)
-        wizard_id = @user.custom_fields['custom_wizard_redirect']
-
-        if wizard_id && url != '/'
-          CustomWizard::Wizard.set_submission_redirect(@user, wizard_id, url)
-          url = "/w/#{wizard_id.dasherize}"
-        end
-      end
-      super(url)
-    end
-
-    private def post_process_invite(user)
-      super(user)
-      @user = user
-    end
-  end
-
-  require_dependency 'invites_controller'
-  class ::InvitesController
-    prepend InvitesControllerCustomWizard
-  end
-
-  class ::ApplicationController
-    before_action :redirect_to_wizard_if_required, if: :current_user
-
-    def redirect_to_wizard_if_required
-      wizard_id = current_user.custom_fields['redirect_to_wizard']
-      @excluded_routes ||= SiteSetting.wizard_redirect_exclude_paths.split('|') + ['/w/']
-      url = request.referer || request.original_url
-
-      if request.format === 'text/html' && !@excluded_routes.any? {|str| /#{str}/ =~ url} && wizard_id
-        if request.referer !~ /\/w\// && request.referer !~ /\/invites\//
-          CustomWizard::Wizard.set_submission_redirect(current_user, wizard_id, request.referer)
-        end
-
-        if CustomWizard::Wizard.exists?(wizard_id)
-          redirect_to "/w/#{wizard_id.dasherize}"
-        end
-      end
-    end
-  end
-
-  add_to_serializer(:current_user, :redirect_to_wizard) {object.custom_fields['redirect_to_wizard']}
-
-  ## TODO limit this to the first admin
-  SiteSerializer.class_eval do
-    attributes :complete_custom_wizard
-
-    def include_wizard_required?
-      scope.is_admin? && Wizard.new(scope.user).requires_completion?
-    end
-
-    def complete_custom_wizard
-      if scope.user && requires_completion = CustomWizard::Wizard.prompt_completion(scope.user)
-        requires_completion.map {|w| {name: w[:name], url: "/w/#{w[:id]}"}}
+      if !wizard.completed?
+        custom_redirect = true
+        CustomWizard::Wizard.set_wizard_redirect(wizard.id, user)
       end
     end
 
-    def include_complete_custom_wizard?
-      complete_custom_wizard.present?
+    !!custom_redirect
+  end
+    
+  add_to_class(:users_controller, :wizard_path) do
+    if custom_wizard_redirect = current_user.custom_fields['redirect_to_wizard']
+      "#{Discourse.base_url}/w/#{custom_wizard_redirect.dasherize}"
+    else
+      "#{Discourse.base_url}/wizard"
     end
   end
 
-  DiscourseEvent.on(:user_approved) do |user|
-    if wizard_id = CustomWizard::Wizard.after_signup
-      CustomWizard::Wizard.set_wizard_redirect(user, wizard_id)
+  add_to_serializer(:current_user, :redirect_to_wizard) do
+    object.custom_fields['redirect_to_wizard']
+  end
+
+  on(:user_approved) do |user|
+    if wizard = CustomWizard::Wizard.after_signup(user)
+      CustomWizard::Wizard.set_wizard_redirect(wizard.id, user)
     end
   end
   
-  ## TODO: We shouldn't be overriding the entire method here. Make this more lightweight.
-  add_to_class(:extra_locales_controller, :show) do
-    bundle = params[:bundle]
-    
-    unless URI(request.referer).path.include? '/w/'
-      raise Discourse::InvalidAccess.new if bundle !~ /^(admin|wizard)$/ || !current_user&.staff?
-    end
+  add_to_class(:application_controller, :redirect_to_wizard_if_required) do
+    wizard_id = current_user.custom_fields['redirect_to_wizard']
+    @excluded_routes ||= SiteSetting.wizard_redirect_exclude_paths.split('|') + ['/w/']
+    url = request.referer || request.original_url
 
-    if params[:v]&.size == 32
-      hash = ExtraLocalesController.bundle_js_hash(bundle)
-      immutable_for(24.hours) if hash == params[:v]
-    end
+    if request.format === 'text/html' && !@excluded_routes.any? {|str| /#{str}/ =~ url} && wizard_id
+      if request.referer !~ /\/w\// && request.referer !~ /\/invites\//
+        CustomWizard::Wizard.set_submission_redirect(current_user, wizard_id, request.referer)
+      end
 
-    render plain: ExtraLocalesController.bundle_js(bundle), content_type: "application/javascript"
+      if CustomWizard::Wizard.exists?(wizard_id)
+        redirect_to "/w/#{wizard_id.dasherize}"
+      end
+    end
+  end
+  
+  add_to_serializer(:site, :include_wizard_required?) do
+    scope.is_admin? && Wizard.new(scope.user).requires_completion?
+  end
+  
+  add_to_serializer(:site, :complete_custom_wizard) do
+    if scope.user && requires_completion = CustomWizard::Wizard.prompt_completion(scope.user)
+      requires_completion.map {|w| { name: w[:name], url: "/w/#{w[:id]}"} }
+    end
   end
 
+  add_to_serializer(:site, :include_complete_custom_wizard?) do
+    complete_custom_wizard.present?
+  end
+  
+  add_model_callback(:application_controller, :before_action) do
+    redirect_to_wizard_if_required if current_user
+  end
+  
+  ::ExtraLocalesController.prepend ExtraLocalesControllerCustomWizard
+  ::InvitesController.prepend InvitesControllerCustomWizard
+  ::Wizard::Field.prepend CustomWizardFieldExtension
+  ::Wizard::Step.prepend CustomWizardStepExtension
+  
   DiscourseEvent.trigger(:custom_wizard_ready)
 end

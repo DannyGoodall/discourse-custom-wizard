@@ -1,21 +1,45 @@
+import DiscourseRoute from "discourse/routes/discourse";
 import CustomWizardApi from '../models/custom-wizard-api';
 
-export default Discourse.Route.extend({
-  queryParams: {
-    refresh_list: {
-      refreshModel: true
-    }
+export default DiscourseRoute.extend({
+  model() {
+    return CustomWizardApi.list();
   },
-
-  model(params) {
-    if (params.name === 'new') {
-      return CustomWizardApi.create({ isNew: true });
-    } else {
-      return CustomWizardApi.find(params.name);
-    }
+  
+  setupController(controller, model) {
+    const showParams = this.paramsFor('adminWizardsApiShow');
+    const apiName = showParams.name == 'create' ? null : showParams.name;
+    const apiList = (model || []).map(api => {
+      return {
+        id: api.name,
+        name: api.title
+      }
+    });
+        
+    controller.setProperties({
+      apiName,
+      apiList
+    })
   },
-
-  setupController(controller, model){
-    controller.set("api", model);
+  
+  actions: {
+    changeApi(apiName) {
+      this.controllerFor('adminWizardsApi').set('apiName', apiName);
+      this.transitionTo('adminWizardsApiShow', apiName);
+    },
+    
+    afterDestroy() {
+      this.transitionTo('adminWizardsApi').then(() => this.refresh());
+    },
+    
+    afterSave(apiName) {
+      this.refresh().then(() => this.send('changeApi', apiName));
+    },
+    
+    createApi() {
+      this.controllerFor('adminWizardsApi').set('apiName', 'create');
+      this.transitionTo('adminWizardsApiShow', 'create');
+    }
   }
+  
 });

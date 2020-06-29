@@ -1,6 +1,10 @@
-export default Ember.Component.extend({
+import Component from "@ember/component";
+import { A } from "@ember/array";
+import I18n from "I18n";
+
+export default Component.extend({
   classNames: ['container', 'export'],
-  selected: Ember.A(),
+  selected: A(),
 
   actions: {
     checkChanged(event) {

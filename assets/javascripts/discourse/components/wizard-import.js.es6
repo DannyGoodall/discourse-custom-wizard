@@ -1,11 +1,14 @@
 import { ajax } from 'discourse/lib/ajax';
-import { default as computed } from 'ember-addons/ember-computed-decorators';
+import { default as discourseComputed } from 'discourse-common/utils/decorators';
+import { notEmpty } from "@ember/object/computed";
+import Component from "@ember/component";
+import I18n from "I18n";
 
-export default Ember.Component.extend({
+export default Component.extend({
   classNames: ['container', 'import'],
-  hasLogs: Ember.computed.notEmpty('logs'),
+  hasLogs: notEmpty('logs'),
 
-  @computed('successIds', 'failureIds')
+  @discourseComputed('successIds', 'failureIds')
   logs(successIds, failureIds) {
     let logs = [];
 

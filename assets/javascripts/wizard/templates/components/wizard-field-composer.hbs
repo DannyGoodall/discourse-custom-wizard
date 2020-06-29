@@ -1,4 +1,11 @@
-{{wizard-editor showPreview=showPreview value=field.value placeholder=field.placeholder}}
-<button class='wizard-btn primary' {{action 'togglePreview'}}>
+{{wizard-composer-editor replyPlaceholder=field.placeholder
+                         composer=composer
+                         groupsMentioned=(action "groupsMentioned")
+                         cannotSeeMention=(action "cannotSeeMention")
+                         importQuote=(action "importQuote")
+                         togglePreview=(action "togglePreview")
+                         afterRefresh=(action "afterRefresh")}}
+
+<button class='wizard-btn primary toggle-preview' {{action 'togglePreview'}}>
   <span class="d-button-label">{{i18n togglePreviewLabel}}</span>
 </button>
