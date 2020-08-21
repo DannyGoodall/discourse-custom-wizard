@@ -25,13 +25,6 @@ if Rails.env.production?
     wizard-plugin.js
     wizard-custom-start.js
     wizard-raw-templates.js.erb
-    stylesheets/wizard/wizard_autocomplete.scss
-    stylesheets/wizard/wizard_custom.scss
-    stylesheets/wizard/wizard_composer.scss
-    stylesheets/wizard/wizard_variables.scss
-    stylesheets/wizard/wizard_custom_mobile.scss
-    stylesheets/wizard/wizard_locations.scss
-    stylesheets/wizard/wizard_events.scss
   }
 end
 
@@ -163,6 +156,8 @@ after_initialize do
   ::InvitesController.prepend InvitesControllerCustomWizard
   ::Wizard::Field.prepend CustomWizardFieldExtension
   ::Wizard::Step.prepend CustomWizardStepExtension
+  
+  CustomWizard::Wizard.register_styles
   
   DiscourseEvent.trigger(:custom_wizard_ready)
 end
