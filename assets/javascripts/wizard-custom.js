@@ -35,6 +35,7 @@
 //= require discourse/app/lib/safari-hacks
 //= require discourse/app/lib/preload-store
 //= require discourse/app/lib/topic-fancy-title
+//= require discourse/app/lib/cookie
 
 //= require discourse/app/mixins/singleton
 
@@ -123,6 +124,7 @@
 //= require caret_position.js
 //= require popper.js
 //= require bootbox.js
+//= require discourse-shims
 
 //= require ./wizard/custom-wizard
 //= require_tree ./wizard/components
