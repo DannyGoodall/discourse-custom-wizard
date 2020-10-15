@@ -1,9 +1,9 @@
-
 export default {
   name: "custom-wizard-step",
   initialize(app) {
     if (window.location.pathname.indexOf("/w/") < 0) return;
     
+    const CustomWizard = requirejs("discourse/plugins/discourse-custom-wizard/wizard/models/custom").default;
     const StepModel = requirejs("wizard/models/step").default;
     const StepComponent = requirejs("wizard/components/wizard-step").default;
     const ajax = requirejs("wizard/lib/ajax").ajax;

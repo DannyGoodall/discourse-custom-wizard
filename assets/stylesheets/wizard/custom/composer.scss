@@ -75,6 +75,7 @@
 .d-editor-preview-wrapper {
   display: flex;
   flex-direction: column;
+  margin-left: 0;
 }
 
 .d-editor-button-bar {
@@ -107,7 +108,6 @@
   width: 1px;
   height: 20px;
   margin: 0 5px;
-  background-color: var(--primary);
   display: inline-block;
 }
 
