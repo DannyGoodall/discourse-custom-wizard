@@ -1,8 +1,8 @@
 # name: discourse-custom-wizard
 # about: Create custom wizards
-# version: 0.2
+# version: 0.6.0
 # authors: Angus McLeod
-# url: https://github.com/angusmcleod/discourse-custom-wizard
+# url: https://github.com/paviliondev/discourse-custom-wizard
 
 register_asset 'stylesheets/common/wizard-admin.scss'
 register_asset 'stylesheets/common/wizard-mapper.scss'
@@ -31,6 +31,7 @@ if respond_to?(:register_svg_icon)
   register_svg_icon "far-calendar"
   register_svg_icon "chevron-right"
   register_svg_icon "chevron-left"
+  register_svg_icon "save"
 end
 
 after_initialize do
@@ -42,20 +43,24 @@ after_initialize do
     ../controllers/custom_wizard/admin/submissions.rb
     ../controllers/custom_wizard/admin/api.rb
     ../controllers/custom_wizard/admin/logs.rb
+    ../controllers/custom_wizard/admin/manager.rb
+    ../controllers/custom_wizard/admin/custom_fields.rb
     ../controllers/custom_wizard/wizard.rb
     ../controllers/custom_wizard/steps.rb
-    ../controllers/custom_wizard/transfer.rb
     ../jobs/clear_after_time_wizard.rb
     ../jobs/refresh_api_access_token.rb
     ../jobs/set_after_time_wizard.rb
+    ../lib/custom_wizard/validators/template.rb
+    ../lib/custom_wizard/validators/update.rb
     ../lib/custom_wizard/action_result.rb
     ../lib/custom_wizard/action.rb
     ../lib/custom_wizard/builder.rb
+    ../lib/custom_wizard/custom_field.rb
     ../lib/custom_wizard/field.rb
     ../lib/custom_wizard/mapper.rb
     ../lib/custom_wizard/log.rb
     ../lib/custom_wizard/step_updater.rb
-    ../lib/custom_wizard/validator.rb
+    ../lib/custom_wizard/template.rb
     ../lib/custom_wizard/wizard.rb
     ../lib/custom_wizard/api/api.rb
     ../lib/custom_wizard/api/authorization.rb
@@ -68,6 +73,7 @@ after_initialize do
     ../serializers/custom_wizard/api_serializer.rb
     ../serializers/custom_wizard/basic_api_serializer.rb
     ../serializers/custom_wizard/basic_wizard_serializer.rb
+    ../serializers/custom_wizard/custom_field_serializer.rb
     ../serializers/custom_wizard/wizard_field_serializer.rb
     ../serializers/custom_wizard/wizard_step_serializer.rb
     ../serializers/custom_wizard/wizard_serializer.rb
@@ -77,6 +83,8 @@ after_initialize do
     ../extensions/users_controller.rb
     ../extensions/wizard_field.rb
     ../extensions/wizard_step.rb
+    ../extensions/custom_field/preloader.rb
+    ../extensions/custom_field/serializer.rb
   ].each do |path|
     load File.expand_path(path, __FILE__)
   end
@@ -127,8 +135,7 @@ after_initialize do
       if request.referer !~ /\/w\// && request.referer !~ /\/invites\//
         CustomWizard::Wizard.set_submission_redirect(current_user, wizard_id, request.referer)
       end
-
-      if CustomWizard::Wizard.exists?(wizard_id)
+      if CustomWizard::Template.exists?(wizard_id)
         redirect_to "/w/#{wizard_id.dasherize}"
       end
     end
@@ -158,7 +165,28 @@ after_initialize do
   ::Wizard::Field.prepend CustomWizardFieldExtension
   ::Wizard::Step.prepend CustomWizardStepExtension
   
-  CustomWizard::Wizard.register_styles
+  full_path = "#{Rails.root}/plugins/discourse-custom-wizard/assets/stylesheets/wizard/wizard_custom.scss"
+  DiscoursePluginRegistry.register_asset(full_path, {}, "wizard_custom")
+  Stylesheet::Importer.register_import("wizard_custom") do
+    import_files(DiscoursePluginRegistry.stylesheets["wizard_custom"])
+  end
   
+  CustomWizard::CustomField::CLASSES.keys.each do |klass|
+    add_model_callback(klass, :after_initialize) do
+      CustomWizard::CustomField.list_by(:klass, klass.to_s).each do |field|
+        klass.to_s
+          .classify
+          .constantize
+          .register_custom_field_type(field.name, field.type.to_sym)
+      end
+    end
+    
+    klass.to_s.classify.constantize.singleton_class.prepend CustomWizardCustomFieldPreloader
+  end
+  
+  CustomWizard::CustomField.serializers.each do |serializer_klass|
+    "#{serializer_klass}_serializer".classify.constantize.prepend CustomWizardCustomFieldSerializer
+  end
+
   DiscourseEvent.trigger(:custom_wizard_ready)
 end

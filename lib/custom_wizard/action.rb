@@ -60,12 +60,18 @@ class CustomWizard::Action
   end
   
   def send_message
-    if action['required'].present? && data[action['required']].blank?
-      log_error(
-        "required not present",
-        "required: #{action['required']}; data: #{data[action['required']]}"
-      )
-      return
+
+    if action['required'].present?
+      required = CustomWizard::Mapper.new(
+        inputs: action['required'],
+        data: data,
+        user: user
+      ).perform
+            
+      if required.blank?
+        log_error("required input not present")
+        return
+      end
     end
     
     params = basic_topic_params
@@ -76,6 +82,11 @@ class CustomWizard::Action
       user: user,
       multiple: true
     ).perform
+    
+    if targets.blank?
+      log_error("no recipients", "send_message has no recipients")
+      return
+    end
     
     targets.each do |target|
       if Group.find_by(name: target)
@@ -119,12 +130,18 @@ class CustomWizard::Action
 
   def update_profile
     params = {}
-    
+        
     if (profile_updates = action['profile_updates'])
       profile_updates.first[:pairs].each do |pair|
         if allowed_profile_field?(pair['key'])
           key = cast_profile_key(pair['key'])
-          value = cast_profile_value(mapper.map_field(pair['value'], pair['value_type']), pair['key']) 
+          value = cast_profile_value(
+            mapper.map_field(
+              pair['value'],
+              pair['value_type']
+            ),
+            pair['key']
+          )
           
           if user_field?(pair['key'])
             params[:custom_fields] ||= {}
@@ -137,10 +154,10 @@ class CustomWizard::Action
     end
     
     params = add_custom_fields(params)
-    
+            
     if params.present?
       result = UserUpdater.new(Discourse.system_user, user).update(params)
-      
+            
       if params[:avatar].present?
         result = update_avatar(params[:avatar])
       end
@@ -250,13 +267,13 @@ class CustomWizard::Action
   
   def open_composer
     params = basic_topic_params
-            
+                
     if params[:title].present? && params[:raw].present?
       url = "/new-topic?title=#{params[:title]}"
       url += "&body=#{params[:raw]}"
-      
+            
       if category_id = action_category
-        if category_id && category = Category.find(category_id)
+        if category = Category.find_by(id: category_id)
           url += "&category=#{category.full_slug('/')}"
         end
       end
@@ -266,7 +283,7 @@ class CustomWizard::Action
       end
       
       route_to = Discourse.base_uri + URI.encode(url)
-      data['redirect_on_complete'] = route_to
+      data['route_to'] = route_to
       
       log_info("route: #{route_to}")
     else
@@ -283,8 +300,15 @@ class CustomWizard::Action
         multiple: true
       }
     ).perform
+    
+    group_map = group_map.flatten.compact
+    
+    unless group_map.present?
+      log_error("invalid group map")
+      return
+    end
         
-    groups = group_map.flatten.reduce([]) do |groups, g|
+    groups = group_map.reduce([]) do |groups, g|
       begin
         groups.push(Integer(g))
       rescue ArgumentError
@@ -324,7 +348,7 @@ class CustomWizard::Action
         user: user
       ).perform
     end
-        
+            
     if action['code']
       data[action['code']] = SecureRandom.hex(8)
       url += "&#{action['code']}=#{data[action['code']]}"
@@ -336,20 +360,36 @@ class CustomWizard::Action
     log_info("route: #{route_to}")
   end
   
-  def create_group    
+  def create_group
     group =
       begin
-        Group.new(new_group_params)
+        Group.new(new_group_params.except(:usernames, :owner_usernames))
       rescue ArgumentError => e
         raise Discourse::InvalidParameters, "Invalid group params"
       end
     
     if group.save
-      GroupActionLogger.new(user, group).log_change_group_settings
+      def get_user_ids(username_string)
+        User.where(username: username_string.split(",")).pluck(:id)
+      end
+      
+      if new_group_params[:owner_usernames].present?
+        owner_ids = get_user_ids(new_group_params[:owner_usernames])
+        owner_ids.each { |user_id| group.group_users.build(user_id: user_id, owner: true) }
+      end
+
+      if new_group_params[:usernames].present?
+        user_ids = get_user_ids(new_group_params[:usernames])
+        user_ids -= owner_ids if owner_ids
+        user_ids.each { |user_id| group.group_users.build(user_id: user_id) }
+      end
+      
+      GroupActionLogger.new(user, group, skip_guardian: true).log_change_group_settings
       log_success("Group created", group.name)
+      
       result.output = group.name
     else
-      log_error("Group creation failed")
+      log_error("Group creation failed", group.errors.messages)
     end
   end
   
@@ -366,7 +406,7 @@ class CustomWizard::Action
       log_success("Category created", category.name)
       result.output = category.id
     else
-      log_error("Category creation failed")
+      log_error("Category creation failed", category.errors.messages)
     end
   end
   
@@ -379,6 +419,8 @@ class CustomWizard::Action
       user: user
     ).perform
     
+    return false unless output.present?
+        
     if output.is_a?(Array)
       output.first
     elsif output.is_a?(Integer)
@@ -394,6 +436,8 @@ class CustomWizard::Action
       data: data,
       user: user,
     ).perform
+    
+    return false unless output.present?
         
     if output.is_a?(Array)
       output.flatten
@@ -410,17 +454,32 @@ class CustomWizard::Action
         user: user
       ).perform
       
+      registered_fields = CustomWizard::CustomField.list
+      
       field_map.each do |field|
         keyArr = field[:key].split('.')
         value = field[:value]
         
-        if keyArr.first === 'topic'
+        if keyArr.length > 1
+          klass = keyArr.first
+          name = keyArr.last
+        else
+          name = keyArr.first
+        end
+         
+        
+        registered = registered_fields.select { |f| f.name == name }
+        if registered.first.present?
+          klass = registered.first.klass
+        end
+                
+        if klass === 'topic'
           params[:topic_opts] ||= {}
           params[:topic_opts][:custom_fields] ||= {}
-          params[:topic_opts][:custom_fields][keyArr.last] = value
+          params[:topic_opts][:custom_fields][name] = value
         else
           params[:custom_fields] ||= {}
-          params[:custom_fields][keyArr.last.to_sym] = value
+          params[:custom_fields][name] = value
         end
       end
     end
@@ -443,17 +502,19 @@ class CustomWizard::Action
       mapper.interpolate(action['post_template']) :
       data[action['post']]
     
+    params[:import_mode] = ActiveRecord::Type::Boolean.new.cast(action['suppress_notifications'])
+    
     add_custom_fields(params)
   end
   
   def public_topic_params
     params = {}
     
-    if (category = action_category)
+    if category = action_category
       params[:category] = category
     end
     
-    if (tags = action_tags)
+    if tags = action_tags
       params[:tags] = tags
     end
     
@@ -505,10 +566,12 @@ class CustomWizard::Action
           user: user
         ).perform
         
-        value = value.parameterize(separator: '_') if attr === "name"
-        value = value.to_i if attr.include?("_level")
-        
-        params[attr.to_sym] = value
+        if value
+          value = value.parameterize(separator: '_') if attr === "name"
+          value = value.to_i if attr.include?("_level")
+          
+          params[attr.to_sym] = value
+        end
       end
     end
     
@@ -533,30 +596,36 @@ class CustomWizard::Action
           user: user
         ).perform
         
-        if attr === "parent_category_id" && value.is_a?(Array)
-          value = value[0]
-        end
-        
-        if attr === "permissions" && value.is_a?(Array)
-          permissions = value
-          value = {}
-          
-          permissions.each do |p|
-            k = p[:key]
-            v = p[:value].to_i
-            
-            if k.is_a?(Array)
-              group = Group.find_by(id: k[0])
-              k = group.name
-            else
-              k = k.parameterize(separator: '_')
-            end
-            
-            value[k] = v 
+        if value
+          if attr === "parent_category_id" && value.is_a?(Array)
+            value = value[0]
           end
+          
+          if attr === "permissions" && value.is_a?(Array)
+            permissions = value
+            value = {}
+            
+            permissions.each do |p|
+              k = p[:key]
+              v = p[:value].to_i
+              
+              if k.is_a?(Array)
+                group = Group.find_by(id: k[0])
+                k = group.name
+              else
+                k = k.parameterize(separator: '_')
+              end
+              
+              value[k] = v 
+            end
+          end
+          
+          if attr === 'slug'
+            value = value.parameterize(separator: '-')
+          end
+          
+          params[attr.to_sym] = value
         end
-        
-        params[attr.to_sym] = value
       end
     end
     
@@ -584,6 +653,8 @@ class CustomWizard::Action
   end
   
   def cast_profile_value(value, key)
+    return value if value.nil?
+    
     if profile_url_fields.include?(key)
       value['url']
     elsif key === 'avatar'

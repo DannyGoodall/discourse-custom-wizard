@@ -6,6 +6,18 @@ en:
 
   wizard:
     custom_title: "Wizard"
+    
+    custom_field:
+      error:
+        required_attribute: "'%{attr}' is a required attribute"
+        unsupported_class: "'%{class}' is not a supported class"
+        unsupported_serializers: "'%{serializers}' are not supported serializers for '%{class}'"
+        unsupported_type: "%{type} is not a supported custom field type"
+        name_invalid: "'%{name}' is not a valid custom field name"
+        name_too_short: "'%{name}' is too short for a custom field name (min length is #{min_length})"
+        name_already_taken: "'%{name}' is already taken as a custom field name"
+        save_default: "Failed to save custom field '%{name}'"
+    
     field:
       too_short: "%{label} must be at least %{min} characters"
       required: "%{label} is required."
@@ -18,14 +30,24 @@ en:
     no_skip: "Wizard can't be skipped"
     export:
       error:
-        select_one: "Please select at least one wizard"
+        select_one: "Please select at least one valid wizard"
+        invalid_wizards: "No valid wizards selected"
     
     import:
       error:
         no_file: "No file selected"
         file_large: "File too large"
         invalid_json: "File is not a valid json file"
-        no_valid_wizards: "File doesn't contain any valid wizards"
+    
+    destroy:
+      error:
+        no_template: No template found
+        default: Error destroying wizard
+    
+    validation:
+      required: "%{property} is required"
+      conflict: "Wizard with id '%{wizard_id}' already exists"
+      after_time: "After time setting is invalid"
 
   site_settings:
     custom_wizard_enabled: "Enable custom wizards."

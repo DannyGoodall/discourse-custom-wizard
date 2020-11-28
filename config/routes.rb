@@ -19,6 +19,10 @@ Discourse::Application.routes.append do
     put 'admin/wizards/wizard/:wizard_id' => 'admin_wizard#save'
     delete 'admin/wizards/wizard/:wizard_id' => 'admin_wizard#remove'
     
+    get 'admin/wizards/custom-fields' => 'admin_custom_fields#index'
+    put 'admin/wizards/custom-fields' => 'admin_custom_fields#update'
+    delete 'admin/wizards/custom-fields/:name' => 'admin_custom_fields#destroy'
+    
     get 'admin/wizards/submissions' => 'admin_submissions#index'
     get 'admin/wizards/submissions/:wizard_id' => 'admin_submissions#show'
     get 'admin/wizards/submissions/:wizard_id/download' => 'admin_submissions#download'
@@ -33,8 +37,9 @@ Discourse::Application.routes.append do
     
     get 'admin/wizards/logs' => 'admin_logs#index'
     
-    get 'admin/wizards/transfer' => 'transfer#index'
-    get 'admin/wizards/transfer/export' => 'transfer#export'
-    post 'admin/wizards/transfer/import' => 'transfer#import'
+    get 'admin/wizards/manager' => 'admin_manager#index'
+    get 'admin/wizards/manager/export' => 'admin_manager#export'
+    post 'admin/wizards/manager/import' => 'admin_manager#import'
+    delete 'admin/wizards/manager/destroy' => 'admin_manager#destroy'
   end
 end

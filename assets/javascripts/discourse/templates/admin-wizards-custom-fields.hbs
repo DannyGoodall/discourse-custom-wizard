@@ -1,0 +1,36 @@
+<div class="admin-wizard-controls">
+  <h3>{{i18n 'admin.wizard.custom_field.nav_label'}}</h3>
+    
+  <div class="buttons">
+    {{d-button
+      label="admin.wizard.custom_field.add"
+      icon="plus"
+      action="addField"}}
+  </div>
+</div>
+
+{{wizard-message
+  key=messageKey
+  opts=messageOpts
+  type=messageType
+  url=documentationUrl
+  component='custom_fields'}}
+
+<div class="admin-wizard-container">
+  {{#if customFields}}
+    <table>
+      <tr>
+        {{#each fieldKeys as |key|}}
+          <th>{{i18n (concat "admin.wizard.custom_field." key ".label")}}</th>
+        {{/each}}
+        <th></th>
+      </tr>
+      {{#each customFields as |field|}}
+        {{custom-field-input
+          field=field
+          removeField=(action 'removeField')
+          saveField=(action 'saveField')}}
+      {{/each}}
+    </table>
+  {{/if}}
+</div>

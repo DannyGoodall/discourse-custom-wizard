@@ -72,6 +72,23 @@ en:
             type: "Select an action type"
             edit: "You're editing an action"
             documentation: "Check out the action documentation"
+          custom_fields:
+            create: "Create, edit or destroy a custom field record"
+            saved: "Saved custom field"
+            error: "Failed to save: {{messages}}"
+            documentation: Check out the custom field documentation
+          manager:
+            info: "Export, import or destroy wizards"
+            documentation: Check out the manager documentation
+            none_selected: Please select atleast one wizard
+            no_file: Please choose a file to import
+            file_size_error: The file size must be 512kb or less
+            file_format_error: The file must be a .json file
+            server_error: "Error: {{message}}"
+            importing: Importing wizards...
+            destroying: Destroying wizards...
+            import_complete: Import complete
+            destroy_complete: Destruction complete
         
         editor:
           show: "Show"
@@ -102,6 +119,7 @@ en:
             tag: "tag"
             group: "group"
             list: "list"
+            custom_field: "custom field"
 
           placeholder:
             text: "Enter text"
@@ -115,6 +133,7 @@ en:
             tag: "Select tag"
             group: "Select group"
             list: "Enter item"
+            custom_field: "Select field"
             
         error:
           failed: "failed to save wizard"
@@ -203,6 +222,9 @@ en:
           skip_redirect:
             label: "Redirect"
             description: "Don't redirect the user to this {{type}} after the wizard completes"
+          suppress_notifications:
+            label: "Suppress Notifications"
+            description: "Suppress normal notifications triggered by post creation"
           send_message:
             label: "Send Message"
             recipient: "Recipient"
@@ -274,6 +296,36 @@ en:
             visibility_level: Visibility Level
             members_visibility_level: Members Visibility Level
         
+        custom_field:
+          nav_label: "Custom Fields"
+          add: "Add"
+          name:
+            label: "Name"
+            select: "underscored_name"
+          type:
+            label: "Type"
+            select: "Select a type"
+            string: "String"
+            integer: "Integer"
+            boolean: "Boolean"
+            json: "JSON"
+          klass:
+            label: "Class"
+            select: "Select a class"
+            post: "Post"
+            category: "Category"
+            topic: "Topic"
+            group: "Group"
+            user: "User"
+          serializers:
+            label: "Serializers"
+            select: "Select serializers"
+            topic_view: "Topic View"
+            topic_list_item: "Topic List Item"
+            basic_category: "Category"
+            basic_group: "Group"
+            post: "Post"
+            
         submissions:
           nav_label: "Submissions"
           title: "{{name}} Submissions"
@@ -335,18 +387,15 @@ en:
         log:
           nav_label: "Logs"
 
-        transfer:
-          nav_label: "Transfer"
-          export:
-            label: "Export"
-            none_selected: "Please select atleast one wizard"
-          import:
-            label: "Import"
-            logs: "Import logs for {{fileName}}"
-            success: 'Wizard "{{id}}" saved successfully'
-            failure: 'Wizard "{{id}}" could not be saved'
-            no_file: "Please choose a file to import"
-            file_size_error: "The file must be JSON and 512kb or less"
+        manager:
+          nav_label: Manager
+          title: Manage Wizards
+          export: Export
+          import: Import
+          imported: imported
+          upload: Select wizards.json
+          destroy: Destroy
+          destroyed: destroyed    
 
   wizard_js:
     group:

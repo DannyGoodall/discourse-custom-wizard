@@ -8,14 +8,14 @@ class CustomWizard::StepUpdater
   # working with. Only my looking across wizard.id and field.id can you identify the
   # field specifically.
   #
-  attr_accessor :refresh_required, :fields, :result, :step, :wizard
+  attr_accessor :refresh_required, :submission, :result, :step. :wizard
 
-  def initialize(current_user, wizard, step, fields)
+  def initialize(current_user, wizard, step, submission)
     @current_user = current_user
     @wizard = wizard
     @step = step
     @refresh_required = false
-    @fields = fields.to_h.with_indifferent_access
+    @submission = submission.to_h.with_indifferent_access
     @result = {}
   end
 
@@ -44,5 +44,9 @@ class CustomWizard::StepUpdater
 
   def refresh_required?
     @refresh_required
+  end
+  
+  def validate
+    CustomWizard::UpdateValidator.new(self).perform
   end
 end
