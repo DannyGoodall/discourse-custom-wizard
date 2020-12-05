@@ -23,6 +23,19 @@ class CustomWizard::Builder
     sorted_handlers << { priority: priority, wizard_id: wizard_id, block: block }
     @sorted_handlers.sort_by! { |h| -h[:priority] }
   end
+
+  def self.sorted_content_providers
+    @sorted_content_providers ||= []
+  end
+
+  def self.content_providers
+    sorted_content_providers.map { |h| { field_id: h[:field_id], wizard_id: h[:wizard_id], value: h[:value],  block: h[:block] } }
+  end
+
+  def self.add_content_provider(priority = 0, wizard_id: nil, field_id: nil, value: nil,  &block)
+    sorted_content_providers << { priority: priority, wizard_id: wizard_id, field_id: field_id, value: value,  block: block }
+    @sorted_content_providers.sort_by! { |h| -h[:priority] }
+  end
   
   def mapper
     CustomWizard::Mapper.new(
