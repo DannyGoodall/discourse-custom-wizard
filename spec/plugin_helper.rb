@@ -1,10 +1,13 @@
-require 'simplecov'
+# frozen_string_literal: true
 
-SimpleCov.configure do
-  add_filter do |src|
-    src.filename !~ /discourse-custom-wizard/ ||
-    src.filename =~ /spec/ ||
-    src.filename =~ /db/ ||
-    src.filename =~ /api/ ## API features are currently experimental
+if ENV['SIMPLECOV']
+  require 'simplecov'
+
+  SimpleCov.start do
+    root "plugins/discourse-custom-wizard"
+    track_files "plugins/discourse-custom-wizard/**/*.rb"
+    add_filter { |src| src.filename =~ /(\/spec\/|\/db\/|plugin\.rb|api)/ }
   end
 end
+
+require 'rails_helper'

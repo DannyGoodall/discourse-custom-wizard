@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require_relative '../../plugin_helper'
 
 describe CustomWizard::CustomField do
   
@@ -9,6 +9,10 @@ describe CustomWizard::CustomField do
       "#{Rails.root}/plugins/discourse-custom-wizard/spec/fixtures/custom_field/custom_fields.json"
     ).read)
   }
+  
+  before do
+    CustomWizard::CustomField.invalidate_cache
+  end
   
   it "saves custom field records" do
     custom_field_json['custom_fields'].each do |field_json|
@@ -174,5 +178,16 @@ describe CustomWizard::CustomField do
     it "lists saved custom field records by attribute value" do
       expect(CustomWizard::CustomField.list_by(:klass, 'topic').length).to eq(1)
     end
+  end
+  
+  it "is enabled if there are custom fields" do
+    custom_field_json['custom_fields'].each do |field_json|
+      CustomWizard::CustomField.new(nil, field_json).save
+    end
+    expect(CustomWizard::CustomField.enabled?).to eq(true)
+  end
+  
+  it "is not enabled if there are no custom fields" do
+    expect(CustomWizard::CustomField.enabled?).to eq(false)
   end
 end

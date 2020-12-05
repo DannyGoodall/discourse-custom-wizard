@@ -1,4 +1,4 @@
-require 'rails_helper'
+require_relative '../../plugin_helper'
 
 describe CustomWizard::Action do
   fab!(:user) { Fabricate(:user, name: "Angus", username: 'angus', email: "angus@email.com", trust_level: TrustLevel[2]) }
@@ -13,10 +13,6 @@ describe CustomWizard::Action do
       ).read),
     skip_jobs: true)
     @template = CustomWizard::Template.find('super_mega_fun_wizard')
-  end
-  
-  context "creating a topic" do
-  
   end
   
   context 'creating a topic' do

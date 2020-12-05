@@ -282,7 +282,7 @@ class CustomWizard::Action
         url += "&tags=#{tags.join(',')}"
       end
       
-      route_to = Discourse.base_uri + URI.encode(url)
+      route_to = Discourse.base_uri + UrlHelper.encode(url)
       data['route_to'] = route_to
       
       log_info("route: #{route_to}")
@@ -354,7 +354,7 @@ class CustomWizard::Action
       url += "&#{action['code']}=#{data[action['code']]}"
     end
     
-    route_to = URI.encode(url)
+    route_to = UrlHelper.encode(url)
     data['route_to'] = route_to
     
     log_info("route: #{route_to}")
@@ -454,7 +454,7 @@ class CustomWizard::Action
         user: user
       ).perform
       
-      registered_fields = CustomWizard::CustomField.list
+      registered_fields = CustomWizard::CustomField.cached_list
       
       field_map.each do |field|
         keyArr = field[:key].split('.')
@@ -468,9 +468,9 @@ class CustomWizard::Action
         end
          
         
-        registered = registered_fields.select { |f| f.name == name }
+        registered = registered_fields.select { |f| f[:name] == name }
         if registered.first.present?
-          klass = registered.first.klass
+          klass = registered.first[:klass]
         end
                 
         if klass === 'topic'
